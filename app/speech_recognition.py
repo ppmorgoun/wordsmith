@@ -34,6 +34,8 @@ def recognise_word():
     wv.write(homePath+"latest_recording.wav", recording, freq, sampwidth=2)
 
 
-    asr_model = EncoderDecoderASR.from_hparams(source="speechbrain/asr-crdnn-rnnlm-librispeech", savedir="data/pretrained_models/asr-crdnn-rnnlm-librispeech")
+    asr_model = EncoderDecoderASR.from_hparams(source="speechbrain/asr-crdnn-rnnlm-librispeech", savedir="/Users/petr/Documents/fun_stuff/wordsmith/wordsmith/data/pretrained_models/asr-crdnn-rnnlm-librispeech")
     heard_word = asr_model.transcribe_file(homePath+'latest_recording.wav')
     return heard_word
+
+recognise_word()

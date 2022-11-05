@@ -21,4 +21,7 @@ class wordSmith(App):
 
 
 wordApp = wordSmith()
-wordApp.run()
+
+
+if __name__ == '__main__':
+    wordApp.run()
