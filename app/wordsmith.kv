@@ -1,18 +1,111 @@
-<MyRoot>:
-    spoken_word: spoken_word
+<HomePage>:
+    id: homepage_id
+    viewclass: 'RecycleViewRow'
+    RecycleBoxLayout:
+        orientation: "vertical"
+        default_size: None, dp(56)
+        default_size_hint: 1, None
+        size_hint_y: None
+        height: self.minimum_height
+        
+<HomePageScreen>:
+    BoxLayout:
+        id: boxlayout_id
+        orientation: "vertical"
+        HomePage: 
+        Button:
+            text: 'Go to enter word'
+            on_release:
+                root.manager.transition.direction = 'left'
+                root.manager.current = 'Enter Word'
+
+
+<RecycleViewRow>:
+    orientation: 'horizontal'
+    Label:
+        text: root.text
+    Button:
+        text: 'Show definition'
+        on_release: app.root.homepagescreen.word_box(root.text, root.id)
+    Button:
+        text: "Remove"
+        on_release: app.root.homepagescreen.remove_word_box(root.text)
+
+<EnterWord>:
+    id: enter_word
+    new_word: input
+
     BoxLayout:
         orientation: "vertical"
         Label:
-            text: "Say something and it will be diplayed here"
+            text: "Add a word to your word bank:"
             font_size: 30
-            color: 0, 0.62, 0.96
-
-        Label:
-            id: spoken_word
-            text: "_"
-            font_size: 30
+        
+        TextInput:
+            id: input
+            hint_text:'Enter word'
+            size_hint: 0.95, 0.5
 
         Button:
-            text: "Listen"
-            font_size: 15
-            on_press: root.listen()
+            text: 'Save to wordbank'
+            on_release:
+                root.submit_new_word()
+                app.root.homepagescreen.ids.boxlayout_id.children[1].update_word()
+
+
+        Button:
+            text: 'Go to home screen'
+            on_release:
+                root.manager.transition.direction = 'right'
+                root.manager.current = 'Home Page'
+
+<WordBox>:
+    title: root.word
+    size_hint: None, None
+    size: 400, 400
+
+    BoxLayout:
+        orientation: 'vertical'
+        Label:
+            text: root.definition
+        Button:
+            size_hint: 1, 0.2
+            text: 'OK'
+            on_release: root.dismiss()
+
+<RemoveWordBox>:
+    title: root.word
+    size_hint: None, None
+    size: 400, 400
+
+    BoxLayout:
+        orientation: 'vertical'
+        Label:
+            text: "Are you sure you want to remove this word?"
+        Button:
+            size_hint: 1, 0.2
+            text: 'yes'
+            on_release: 
+                app.root.homepagescreen.ids.boxlayout_id.children[1].remove_word(root.word)
+                root.dismiss()
+        Button:
+            size_hint: 1, 0.2
+            text: 'no'
+            on_release: root.dismiss()
+
+
+<Manager>:
+    id: screen_manager
+
+    homepagescreen: homepagescreen
+    enterword: enterword
+
+    HomePageScreen:
+        id: homepagescreen
+        name: "Home Page"
+        manager: screen_manager
+
+    EnterWord:
+        id: enterword
+        name: "Enter Word"
+        manager: screen_manager

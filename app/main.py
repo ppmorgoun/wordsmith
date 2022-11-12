@@ -1,27 +1,92 @@
 import kivy
 from kivy.app import App
 from kivy.uix.boxlayout import BoxLayout
-import speechbrain as sb
-from speech_recognition import recognise_word
-import random
+from kivy.uix.widget import Widget
+from kivy.uix.popup import Popup
+from kivy.uix.recycleview import RecycleView
+from kivy.uix.screenmanager import ScreenManager, Screen, NoTransition
+from kivy.properties import ObjectProperty, StringProperty, ListProperty
+from kivy.clock import Clock
 
 kivy.require('2.0.0')
 
-class MyRoot(BoxLayout):
-    def __init__(self):
-        super(MyRoot, self).__init__()
+class WordBox(Popup):
+    word = StringProperty()
+    definition = StringProperty()
 
-    def listen(self):
-        self.spoken_word.text = recognise_word()
+class RemoveWordBox(Popup):
+    word = StringProperty()
+
+class RecycleViewRow(BoxLayout):
+    text = StringProperty()  
+
+class EnterWord(Screen):
+    new_word = ObjectProperty(None)
+
+    def submit_new_word(self):
+        word_bank[self.new_word.text] = self.new_word.text
+        self.new_word.text = ''
+        print([i for i in word_bank])
 
 
-class wordSmith(App):
+class HomePageScreen(Screen):
+    def word_box(self, word, definition):
+        p = WordBox()
+        p.word = word
+        p.definition = definition
+        p.open()
+        print("{} was pressed".format(word))
+
+    def remove_word_box(self, word):
+        p = RemoveWordBox()
+        p.word = word
+        p.open()
+        print("{} was removed".format(word))
+
+
+
+class HomePage(RecycleView):
+
+    
+    word_bank = ListProperty('')
+    word = StringProperty()
+    #app = App.get_running_app()
+    def __init__(self, **kwargs):
+        super(HomePage, self).__init__(**kwargs)
+        self.data = [{'text': word, 'id': definition} for word, definition in word_bank.items()]
+        #self.data = [{'text': "Button " + str(x), 'id': str(x)} for x in self.app.root.ids.enter_word.WORD_BANK]
+    """ 
+    def __init__(self, **kwargs):
+        super(HomePage, self).__init__(**kwargs)
+        Clock.schedule_once(self.after_init)
+
+    def after_init(self, dt):
+        self.data = [{'text': "Wordsmith", 'id': "A skilled user of words"}] """
+
+    def update_word(self):
+        self.data= [{'text': word, 'id': definition} for word, definition in word_bank.items()]   
+        print('update word')
+
+    def remove_word(self, word):
+        del word_bank[word]
+        self.update_word()
+    
+
+class Manager(ScreenManager):
+    global word_bank
+    word_bank = {}
+    word_bank["Wordsmith"] = "A skilled user of words"
+    homepagescreen = ObjectProperty(None)
+    enterword = ObjectProperty(None)
+
+class WordSmith(App):
     def build(self):
-        return MyRoot()
+        sm = Manager(transition=NoTransition())
+        return sm
 
 
-wordApp = wordSmith()
+WordApp = WordSmith()
 
 
 if __name__ == '__main__':
-    wordApp.run()
+    WordApp.run()
