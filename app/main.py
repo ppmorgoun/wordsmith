@@ -8,6 +8,8 @@ from kivy.uix.screenmanager import ScreenManager, Screen, NoTransition
 from kivy.properties import ObjectProperty, StringProperty, ListProperty
 from kivy.clock import Clock
 from PyDictionary import PyDictionary
+import mysql.connector
+import sqlite3
 
 kivy.require('2.0.0')
 
@@ -30,18 +32,27 @@ class EnterWord(Screen):
     def search_word_meaning(self):
         word_stripped = self.new_word.text.strip()
         meaning = str(self.dictionary.meaning(word_stripped))
-        print("{} word means: {}".format(word_stripped, meaning))
         self.word_meaning = meaning
 
     def submit_new_word(self):
-        word_stripped = self.new_word.text.strip()
+        word_stripped = self.new_word.text.strip().capitalize()
         if word_stripped != '':
-            word_bank[word_stripped] = self.word_meaning
+            conn = sqlite3.connect('data/wordbank.db')
+            c = conn.cursor()
+            try:
+                sql_command = "INSERT INTO words (word, definition, bucket) VALUES (?, ?, ?)"
+                values = (word_stripped, self.word_meaning, 1)
+                c.execute(sql_command, values)
+                conn.commit()
+                print("Word added to database")
+            except:
+                print('Error: word already exists in database')
+            
+            conn.close()
+            
+
         self.word_meaning = ''
         self.new_word.text = ''
-        print([i for i in word_bank])
-
-    
 
 
 class HomePageScreen(Screen):
@@ -68,8 +79,14 @@ class HomePage(RecycleView):
     #app = App.get_running_app()
     def __init__(self, **kwargs):
         super(HomePage, self).__init__(**kwargs)
-        self.data = [{'text': word, 'id': definition} for word, definition in word_bank.items()]
-        #self.data = [{'text': "Button " + str(x), 'id': str(x)} for x in self.app.root.ids.enter_word.WORD_BANK]
+        conn = sqlite3.connect('data/wordbank.db')
+        c = conn.cursor()
+        c.execute("SELECT word, definition FROM words")
+        word_row = c.fetchall()
+        conn.close()
+
+        self.data= [{'text': str(word), 'id': str(definition)} for word, definition in word_row]  
+
     """ 
     def __init__(self, **kwargs):
         super(HomePage, self).__init__(**kwargs)
@@ -79,24 +96,55 @@ class HomePage(RecycleView):
         self.data = [{'text': "Wordsmith", 'id': "A skilled user of words"}] """
 
     def update_word(self):
-        self.data= [{'text': word, 'id': definition} for word, definition in word_bank.items()]   
-        print('update word')
+        conn = sqlite3.connect('data/wordbank.db')
+        c = conn.cursor()
+        c.execute("SELECT word, definition FROM words")
+        word_row = c.fetchall()
+        conn.close()
+
+        self.data= [{'text': str(word), 'id': str(definition)} for word, definition in word_row]   
+        print('updated home page with words from db')
+
+        
 
     def remove_word(self, word):
-        del word_bank[word]
-        self.update_word()
+        """ del word_bank[word]
+        self.update_word() """
+
+        conn = sqlite3.connect('data/wordbank.db')
+        c = conn.cursor()
+        sql_command = "DELETE FROM words WHERE word = ?"
+        c.execute(sql_command, (word,))
+        conn.commit()
+        c.execute("SELECT word, definition FROM words")
+        word_row = c.fetchall()
+        conn.close()
+
+        self.data= [{'text': str(word), 'id': str(definition)} for word, definition in word_row] 
     
 
 class Manager(ScreenManager):
-    global word_bank
+    """ global word_bank
     word_bank = {}
     word_bank["Wordsmith"] = "A skilled user of words"
+ """
     homepagescreen = ObjectProperty(None)
     enterword = ObjectProperty(None)
 
 class WordSmith(App):
     def build(self):
         sm = Manager(transition=NoTransition())
+        conn = sqlite3.connect('data/wordbank.db')
+        c = conn.cursor()
+        c.execute("""CREATE TABLE if not exists words(
+			word VARCHAR(50), definition VARCHAR(300), bucket INT, UNIQUE(word))
+		 """)
+        c.execute("SELECT * FROM words")
+        conn.commit()
+
+        conn.close()
+
+
         return sm
 
 
