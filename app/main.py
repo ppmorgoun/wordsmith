@@ -7,6 +7,7 @@ from kivy.uix.recycleview import RecycleView
 from kivy.uix.screenmanager import ScreenManager, Screen, NoTransition
 from kivy.properties import ObjectProperty, StringProperty, ListProperty
 from kivy.clock import Clock
+from PyDictionary import PyDictionary
 
 kivy.require('2.0.0')
 
@@ -22,11 +23,25 @@ class RecycleViewRow(BoxLayout):
 
 class EnterWord(Screen):
     new_word = ObjectProperty(None)
+    word_meaning = StringProperty('')
+
+    dictionary=PyDictionary()
+
+    def search_word_meaning(self):
+        word_stripped = self.new_word.text.strip()
+        meaning = str(self.dictionary.meaning(word_stripped))
+        print("{} word means: {}".format(word_stripped, meaning))
+        self.word_meaning = meaning
 
     def submit_new_word(self):
-        word_bank[self.new_word.text] = self.new_word.text
+        word_stripped = self.new_word.text.strip()
+        if word_stripped != '':
+            word_bank[word_stripped] = self.word_meaning
+        self.word_meaning = ''
         self.new_word.text = ''
         print([i for i in word_bank])
+
+    
 
 
 class HomePageScreen(Screen):

@@ -49,6 +49,7 @@
         Button:
             text: 'Save to wordbank'
             on_release:
+                root.search_word_meaning()
                 root.submit_new_word()
                 app.root.homepagescreen.ids.boxlayout_id.children[1].update_word()
 
@@ -67,6 +68,7 @@
     BoxLayout:
         orientation: 'vertical'
         Label:
+            text_size: root.width - 50, None
             text: root.definition
         Button:
             size_hint: 1, 0.2
