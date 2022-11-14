@@ -12,9 +12,11 @@
     BoxLayout:
         id: boxlayout_id
         orientation: "vertical"
+        spacing: 10
         HomePage: 
         Button:
             text: 'Go to enter word'
+            size_hint: 1, 0.2
             on_release:
                 root.manager.transition.direction = 'left'
                 root.manager.current = 'Enter Word'
@@ -29,6 +31,7 @@
         on_release: app.root.homepagescreen.word_box(root.text, root.id)
     Button:
         text: "Remove"
+        size_hint: 0.25, 1
         on_release: app.root.homepagescreen.remove_word_box(root.text)
 
 <EnterWord>:
@@ -44,7 +47,6 @@
         TextInput:
             id: input
             hint_text:'Enter word'
-            size_hint: 0.95, 0.5
 
         Button:
             text: 'Save to wordbank'
@@ -67,9 +69,13 @@
 
     BoxLayout:
         orientation: 'vertical'
-        Label:
-            text_size: root.width - 50, None
-            text: root.definition
+        ScrollView:
+            id: scroll_view
+            TextInput:
+                text: root.definition
+                size_hint: 1, None
+                height: max(self.minimum_height, scroll_view.height)
+
         Button:
             size_hint: 1, 0.2
             text: 'OK'
@@ -86,13 +92,13 @@
             text: "Are you sure you want to remove this word?"
         Button:
             size_hint: 1, 0.2
-            text: 'yes'
+            text: 'Yes'
             on_release: 
                 app.root.homepagescreen.ids.boxlayout_id.children[1].remove_word(root.word)
                 root.dismiss()
         Button:
             size_hint: 1, 0.2
-            text: 'no'
+            text: 'No'
             on_release: root.dismiss()
 
 
