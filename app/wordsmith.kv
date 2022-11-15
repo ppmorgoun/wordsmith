@@ -16,10 +16,22 @@
         HomePage: 
         Button:
             text: 'Go to enter word'
-            size_hint: 1, 0.2
+            size_hint: 1, 0.15
             on_release:
-                root.manager.transition.direction = 'left'
                 root.manager.current = 'Enter Word'
+        Button:
+            text: "Settings"
+            size_hint: 1, 0.15
+            on_release:
+                root.manager.current = 'Settings'
+
+<SettingsScreen>:
+    BoxLayout:
+        orientation: "vertical"
+        Button:
+            text: "Copy all word in wordbank to clipboard"
+            on_release:
+                root.copy_wordbank()
 
 
 <RecycleViewRow>:
@@ -43,10 +55,18 @@
         Label:
             text: "Add a word to your word bank:"
             font_size: 30
-        
-        TextInput:
-            id: input
-            hint_text:'Enter word'
+        BoxLayout:
+            orientation: 'horizontal'
+            TextInput:
+                id: input
+                hint_text:'Enter word'
+            Button:
+                text: "Recognize speech"
+                on_release:
+                    root.recognize_spoken_word()
+                    root.search_word_meaning()
+                    root.submit_new_word()
+                    app.root.homepagescreen.ids.boxlayout_id.children[1].update_word()
 
         Button:
             text: 'Save to wordbank'
@@ -107,6 +127,7 @@
 
     homepagescreen: homepagescreen
     enterword: enterword
+    settingsscreen: settingsscreen
 
     HomePageScreen:
         id: homepagescreen
@@ -117,3 +138,9 @@
         id: enterword
         name: "Enter Word"
         manager: screen_manager
+
+    SettingsScreen:
+        id: settingsscreen
+        name: "Settings"
+        manager: screen_manager
+
