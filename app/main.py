@@ -3,13 +3,19 @@ from kivy.app import App
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.widget import Widget
 from kivy.uix.popup import Popup
+from kivy.uix.button import Button
+from kivy.uix.label import Label
 from kivy.uix.recycleview import RecycleView
 from kivy.uix.screenmanager import ScreenManager, Screen, NoTransition
 from kivy.properties import ObjectProperty, StringProperty, ListProperty
 from kivy.clock import Clock
+import pyperclip
 from PyDictionary import PyDictionary
 import sqlite3
 import os
+from speech import Free_Google_ASR
+import speech_recognition as sr
+
 __version__ = "0.1"
 kivy.require('2.0.0')
 
@@ -20,6 +26,9 @@ class WordBox(Popup):
 class RemoveWordBox(Popup):
     word = StringProperty()
 
+class DidntUnderstand(Popup):
+    pass
+
 class RecycleViewRow(BoxLayout):
     text = StringProperty()  
 
@@ -27,10 +36,17 @@ class EnterWord(Screen):
     new_word = ObjectProperty(None)
     word_meaning = StringProperty('')
 
+    # adjust for ambient noise
+    recognizer = Free_Google_ASR()
+    recognizer.adjust_for_ambient_noise()
+    print("Adjusting for ambient noise...")
+
     dictionary=PyDictionary()
 
     def search_word_meaning(self):
         # searches for the meaning of the word entered in the text input
+        if self.new_word.text == '':
+            return
         word_stripped = self.new_word.text.strip()
         meaning = self.dictionary.meaning(word_stripped)
         if meaning is not None:
@@ -48,10 +64,32 @@ class EnterWord(Screen):
             meaning_clean += sub_meaning + '\n\n'
         return meaning_clean
 
+    def recognize_spoken_word(self):
+        # uses the speech recognition module to recognize the spoken word
+        
+        guess = self.recognizer.get_command()
+
+        if guess["transcription"]:
+            self.new_word.text = guess["transcription"]
+            print("You said: {}".format(guess["transcription"]))
+
+        elif guess["error"] == "Unable to recognize speech":
+            # adding an error popup for when the speech recognition module can't recognize the word
+            
+            layout = BoxLayout(orientation='vertical')
+            btn1 = Button(text='Ok', size_hint= (1, 0.2))
+            label = Label(text='Unable to recognize speech, please try again. Alternatively please type the word instead', size_hint= (1, 0.8), text_size= (350, None))
+            layout.add_widget(label)
+            layout.add_widget(btn1)
+            #layout.children[1].config(text_size=(layout.children[1].width, None), halign='center', valign='middle')
+            popup = Popup(title='Error', content=layout, auto_dismiss=False, size_hint=(None, None), size=(400, 400))
+            btn1.bind(on_press=popup.dismiss)
+            popup.open()
+
     def submit_new_word(self):
-        # writes a word, it's meaning, and the default bucket number to the database
-        word_stripped = self.new_word.text.strip().capitalize()
-        if word_stripped != '':
+        # writes a word, it's meaning, and the default bucket number to the database     
+        if self.new_word.text != '':
+            word_stripped = self.new_word.text.strip().capitalize()
             conn = sqlite3.connect('data/wordbank.db')
             c = conn.cursor()
             try:
@@ -69,6 +107,20 @@ class EnterWord(Screen):
         self.word_meaning = ''
         self.new_word.text = ''
 
+class SettingsScreen(Screen):
+    def copy_wordbank(self):
+        # copies the wordbank database to the user's clipboard
+        conn = sqlite3.connect('data/wordbank.db')
+        c = conn.cursor()
+        c.execute("SELECT word FROM words")
+        words= c.fetchall() # this is a list of tuples
+        conn.close()
+        words = [i[0] for i in words]
+        words = '\n'.join(words)
+        print(words)
+
+
+        pyperclip.copy(words)
 
 class HomePageScreen(Screen):
     def word_box(self, word, definition):
@@ -105,11 +157,10 @@ class HomePage(RecycleView):
         conn = sqlite3.connect('data/wordbank.db')
         c = conn.cursor()
         c.execute("SELECT word, definition FROM words")
-        word_row = c.fetchall()
+        word_row = c.fetchall() # this is a list of tuples
         conn.close()
 
         self.data= [{'text': str(word), 'id': str(definition)} for word, definition in word_row]   
-        print('updated home page with words from db')
 
     def remove_word(self, word):
         # a popup called by the recycleviewrow that removes a word from the database
@@ -128,6 +179,7 @@ class HomePage(RecycleView):
 class Manager(ScreenManager):
     homepagescreen = ObjectProperty(None)
     enterword = ObjectProperty(None)
+    settingsscreen = ObjectProperty(None)
 
 class WordSmith(App):
     def build(self):
