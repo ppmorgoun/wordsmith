@@ -12,7 +12,6 @@
     BoxLayout:
         id: boxlayout_id
         orientation: "vertical"
-        spacing: 10
         HomePage: 
         Button:
             text: 'Go to enter word'
@@ -29,9 +28,13 @@
     BoxLayout:
         orientation: "vertical"
         Button:
-            text: "Copy all word in wordbank to clipboard"
+            text: "Copy all words in wordbank to your clipboard"
             on_release:
                 root.copy_wordbank()
+        Button:
+            text: 'Go to home screen'
+            on_release:
+                root.manager.current = 'Home Page'
 
 
 <RecycleViewRow>:
@@ -66,20 +69,19 @@
                     root.recognize_spoken_word()
                     root.search_word_meaning()
                     root.submit_new_word()
-                    app.root.homepagescreen.ids.boxlayout_id.children[1].update_word()
+                    app.root.homepagescreen.ids.boxlayout_id.children[2].update_word()
 
         Button:
             text: 'Save to wordbank'
             on_release:
                 root.search_word_meaning()
                 root.submit_new_word()
-                app.root.homepagescreen.ids.boxlayout_id.children[1].update_word()
+                app.root.homepagescreen.ids.boxlayout_id.children[2].update_word()
 
 
         Button:
             text: 'Go to home screen'
             on_release:
-                root.manager.transition.direction = 'right'
                 root.manager.current = 'Home Page'
 
 <WordBox>:
@@ -114,7 +116,7 @@
             size_hint: 1, 0.2
             text: 'Yes'
             on_release: 
-                app.root.homepagescreen.ids.boxlayout_id.children[1].remove_word(root.word)
+                app.root.homepagescreen.ids.boxlayout_id.children[2].remove_word(root.word)
                 root.dismiss()
         Button:
             size_hint: 1, 0.2
