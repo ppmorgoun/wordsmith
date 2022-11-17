@@ -93,10 +93,22 @@
         orientation: 'vertical'
         ScrollView:
             id: scroll_view
-            TextInput:
+            #TextInput:
+                #text: root.definition
+                #size_hint: 1, None
+                #height: max(self.minimum_height, scroll_view.height)
+            Label:
                 text: root.definition
-                size_hint: 1, None
-                height: max(self.minimum_height, scroll_view.height)
+                #size_hint: 1, None
+                #size_hint_x: None
+                #size_hint_y: None
+                #on_texture_size: if self.texture: self.width = self.texture.width
+                #on_texture_size: if self.texture: self.height = self.texture.height
+                text_size: self.size
+                halign: 'left'
+                valign: 'top'
+                x_padding: 100
+                y_padding: 100
 
         Button:
             size_hint: 1, 0.2
