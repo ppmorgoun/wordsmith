@@ -10,44 +10,75 @@
         
 <HomePageScreen>:
     BoxLayout:
-        id: boxlayout_id
+        id: main_boxlayout
         orientation: "vertical"
         HomePage: 
-        Button:
-            text: 'Go to enter word'
+        BoxLayout:
+            id: sub_boxlayout
+            orientation: "horizontal"
             size_hint: 1, 0.15
-            on_release:
-                root.manager.current = 'Enter Word'
+            Button:
+                text: 'Go to enter word'
+                on_release:
+                    root.manager.current = 'Enter Word'
+            Button:
+                text: "Practice now!"
+                on_release:
+                    root.manager.current = 'SSL Screen'
         Button:
             text: "Settings"
             size_hint: 1, 0.15
             on_release:
                 root.manager.current = 'Settings'
 
-<SettingsScreen>:
-    BoxLayout:
-        orientation: "vertical"
-        Button:
-            text: "Copy all words in wordbank to your clipboard"
-            on_release:
-                root.copy_wordbank()
-        Button:
-            text: 'Go to home screen'
-            on_release:
-                root.manager.current = 'Home Page'
-
 
 <RecycleViewRow>:
     orientation: 'horizontal'
     Label:
         text: root.text
+        #text_size: root.width, root.height
+        #font_size: self.texture
+        font_size: sp(10)
+        larger_font: min(sp(10), self.font_size + 1)  # one point larger but not over maximum
+        on_texture_size:
+            if self.texture_size[0] > self.width: self.font_size -= 1  # reduce font size if too wide
+            elif self.texture_size[0] + self.font_size / 2 < self.width: self.font_size = self.larger_font 
     Button:
         text: 'Show definition'
+        font_size: "10sp"
         on_release: app.root.homepagescreen.word_box(root.text, root.id)
     Button:
-        text: "Remove"
-        size_hint: 0.25, 1
+        text: "X"
+        size_hint: 0.5, 1
         on_release: app.root.homepagescreen.remove_word_box(root.text)
+
+
+<SettingsScreen>:
+    BoxLayout:
+        orientation: "vertical"
+        Label:
+            text: "Made by PPtheGreat :3"
+        Button:
+            size_hint: 1, 0.15
+            text: "Copy all words in wordbank to your clipboard"
+            on_release:
+                root.copy_wordbank()
+        Button:
+            size_hint: 1, 0.15
+            text: 'Go to home screen'
+            on_release:
+                root.manager.current = 'Home Page'
+
+<SSLScreen>:
+    BoxLayout:
+        orientation: "vertical"
+        Label:
+            text: "placeholder"
+        Button:
+            size_hint: 1, 0.15
+            text: 'Go to home screen'
+            on_release:
+                root.manager.current = 'Home Page'
 
 <EnterWord>:
     id: enter_word
@@ -57,32 +88,43 @@
         orientation: "vertical"
         Label:
             text: "Add a word to your word bank:"
-            font_size: 30
+            text_size: self.size
+            font_size: "20sp"
+            halign: 'center'
+            valign: 'center'
         BoxLayout:
             orientation: 'horizontal'
             TextInput:
+                size_hint: 1, 0.5
                 id: input
                 hint_text:'Enter word'
             Button:
+                size_hint: 1, 0.5
                 text: "Recognize speech"
+                font_size: "15sp"
                 on_release:
                     root.recognize_spoken_word()
                     root.search_word_meaning()
                     root.submit_new_word()
-                    app.root.homepagescreen.ids.boxlayout_id.children[2].update_word()
+                    app.root.homepagescreen.ids.main_boxlayout.children[2].update_word()
 
         Button:
+            size_hint: 1, 0.5
             text: 'Save to wordbank'
+            font_size: "15sp"
             on_release:
                 root.search_word_meaning()
                 root.submit_new_word()
-                app.root.homepagescreen.ids.boxlayout_id.children[2].update_word()
+                app.root.homepagescreen.ids.main_boxlayout.children[2].update_word()
 
 
         Button:
+            size_hint: 1, 0.5
             text: 'Go to home screen'
+            font_size: "15sp"
             on_release:
                 root.manager.current = 'Home Page'
+
 
 <WordBox>:
     title: root.word
@@ -107,8 +149,6 @@
                 text_size: self.size
                 halign: 'left'
                 valign: 'top'
-                x_padding: 100
-                y_padding: 100
 
         Button:
             size_hint: 1, 0.2
@@ -124,16 +164,18 @@
         orientation: 'vertical'
         Label:
             text: "Are you sure you want to remove this word?"
+            text_size: self.size
         Button:
             size_hint: 1, 0.2
             text: 'Yes'
             on_release: 
-                app.root.homepagescreen.ids.boxlayout_id.children[2].remove_word(root.word)
+                app.root.homepagescreen.ids.main_boxlayout.children[2].remove_word(root.word)
                 root.dismiss()
         Button:
             size_hint: 1, 0.2
             text: 'No'
             on_release: root.dismiss()
+
 
 
 <Manager>:
@@ -142,6 +184,7 @@
     homepagescreen: homepagescreen
     enterword: enterword
     settingsscreen: settingsscreen
+    sslscreen: sslscreen
 
     HomePageScreen:
         id: homepagescreen
@@ -156,5 +199,10 @@
     SettingsScreen:
         id: settingsscreen
         name: "Settings"
+        manager: screen_manager
+
+    SSLScreen:
+        id: sslscreen
+        name: "SSL Screen"
         manager: screen_manager
 

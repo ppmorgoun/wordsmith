@@ -32,6 +32,28 @@ class DidntUnderstand(Popup):
 class RecycleViewRow(BoxLayout):
     text = StringProperty()  
 
+""" <RecycleViewRow>:
+    orientation: 'horizontal'
+    Label:
+        text: root.text
+        #text_size: root.width, root.height
+        #font_size: self.texture
+        #font_size: root.test_funct()
+        #larger_font: min(10, self.font_size + 1)  # one point larger but not over maximum
+        #on_texture_size:
+            #if self.texture_size[0] > self.width: self.font_size -= 1  # reduce font size if too wide
+            #elif self.texture_size[0] + self.font_size / 2 < self.width: self.font_size = self.larger_font 
+    Button:
+        text: 'Show definition'
+        font_size: "10sp"
+        on_release: app.root.homepagescreen.word_box(root.text, root.id)
+    Button:
+        text: "X"
+        size_hint: 0.5, 1
+        on_release: app.root.homepagescreen.remove_word_box(root.text) """
+class SSLScreen(Screen):
+    pass
+
 class EnterWord(Screen):
     new_word = ObjectProperty(None)
     word_meaning = StringProperty('')
@@ -159,8 +181,9 @@ class HomePage(RecycleView):
         c.execute("SELECT word, definition FROM words")
         word_row = c.fetchall() # this is a list of tuples
         conn.close()
-
+        
         self.data= [{'text': str(word), 'id': str(definition)} for word, definition in word_row]   
+        print("Updated home page with wordbank")
 
     def remove_word(self, word):
         # a popup called by the recycleviewrow that removes a word from the database
@@ -180,6 +203,7 @@ class Manager(ScreenManager):
     homepagescreen = ObjectProperty(None)
     enterword = ObjectProperty(None)
     settingsscreen = ObjectProperty(None)
+    sslscreen = ObjectProperty(None) # spaced repitition learning screen
 
 class WordSmith(App):
     def build(self):
