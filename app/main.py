@@ -16,11 +16,8 @@ import random
 from datetime import datetime
 from speech import Free_Google_ASR
 import speech_recognition as sr
-from kivy.lang.builder import Builder
 
 kivy.require('2.0.0')
-
-
 
 class WordBox(Popup):
     word = StringProperty()
@@ -64,26 +61,6 @@ class SSLScreen(Screen):
         conn.close()
         self.ids.nextword.text = self.current_word
 
-""" Button:
-            size_hint: 1, 0.15
-            text: 'Reveal word definition'
-            on_release:
-                root.manager.transition = SlideTransition(direction='left')
-                root.manager.current = 'SSL Screen Meaning'
-
-            layout = BoxLayout(orientation='vertical')
-            btn1 = Button(text='Ok', size_hint= (1, 0.2))
-            label = Label(text='Unable to recognize speech, please try again. Alternatively please type the word instead', size_hint= (1, 0.8), text_size= (350, None))
-            layout.add_widget(label)
-            layout.add_widget(btn1)
-            #layout.children[1].config(text_size=(layout.children[1].width, None), halign='center', valign='middle')
-            popup = Popup(title='Error', content=layout, auto_dismiss=False, size_hint=(None, None), size=(400, 400))
-            btn1.bind(on_press=popup.dismiss)
-            popup.open() 
-"""
-    # create 4 buttons and functions that change the EF of the score according to if the user
-    # got the word wrong, found it hard, found it easy, or found it very easy
-    # update the sql database with the new EF and CI and time
 
 class SSLScreenMeaning(Screen):
     word_def = StringProperty("")
@@ -119,7 +96,14 @@ class SSLScreenMeaning(Screen):
         #if self.isGraduate:
         if self.word != "No words":
             self.ef += EFchange
-            self.ci = self.ci * self.ef
+            if EFchange == -0.2:
+                self.ci = 1
+            else:
+                self.ci = self.ci * self.ef
+                
+            if self.ef < 1.3:
+                self.ef = 1.3
+
             self.time = int(datetime.now().strftime("%Y%m%d%H%M%S"))
             conn = sqlite3.connect('wordbank.db')
             c = conn.cursor()
@@ -129,7 +113,6 @@ class SSLScreenMeaning(Screen):
             print("Updated word: ", self.word, "EF: ", self.ef, "CI: ", self.ci, "time: ", self.time)
         else:
             print("No words to update")
-
 
 class EnterWord(Screen):
     def __init__(self, **kwargs):
@@ -214,10 +197,9 @@ class EnterWord(Screen):
                 print('Error: word already exists in database')
             conn.close()
 
-            
-
         self.word_meaning = ''
         self.new_word.text = ''
+
 
 class SettingsScreen(Screen):
     def __init__(self, **kwargs):
@@ -243,12 +225,8 @@ class SettingsScreen(Screen):
         p.open()
         print("Copy wordbank popup was shown")
 
-        #pyperclip.copy(words)
 
 class HomePageScreen(Screen):
-    def __init__(self, **kwargs):
-        super().__init__()
-
     def word_box(self, word, definition):
         # this is a popup that shows the word and definition
         p = WordBox()
@@ -263,7 +241,6 @@ class HomePageScreen(Screen):
         p.word = word
         p.open()
         print("{} was removed".format(word))
-
 
 
 class HomePage(RecycleView):
@@ -313,6 +290,7 @@ class Manager(ScreenManager):
     sslscreen = ObjectProperty(None) # spaced repitition learning screen
     sslscreenmeaning = ObjectProperty(None) # word definition spaced repitition learning screen
 
+
 class WordSmith(App):
     def on_start(self) -> None:
         print(type(App.get_running_app()))
@@ -330,6 +308,7 @@ class WordSmith(App):
 			word VARCHAR(50), definition VARCHAR(400), EF INT, CI INT, isGraduate BOOLEAN, time TEXT, UNIQUE(word))
 		 """)
             conn.commit()
+
             # insert "wordsmith" and it's definition into words table
             c.execute("""INSERT INTO words (word, definition, EF, CI, isGraduate, time) VALUES ('Wordsmith', 'A skilled user of words', 2.5, 1, True, '{}')""".format(int(datetime.now().strftime("%Y%m%d%H%M%S"))))
             conn.commit()
@@ -337,7 +316,6 @@ class WordSmith(App):
         
         sm = Manager(transition=NoTransition())
         return sm
-
 
 WordApp = WordSmith()
 
