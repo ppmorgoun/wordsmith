@@ -1,3 +1,6 @@
+#: import SlideTransition kivy.uix.screenmanager.SlideTransition
+#: import NoTransition kivy.uix.screenmanager.NoTransition
+
 <HomePage>:
     id: homepage_id
     viewclass: 'RecycleViewRow'
@@ -24,6 +27,7 @@
             Button:
                 text: "Practice now!"
                 on_release:
+                    app.root.sslscreen.fetchNextWord()
                     root.manager.current = 'SSL Screen'
         Button:
             text: "Settings"
@@ -36,9 +40,8 @@
     orientation: 'horizontal'
     Label:
         text: root.text
-        #text_size: root.width, root.height
-        #font_size: self.texture
         font_size: sp(10)
+        #the following 4 lines will adjust wide words until they don't extend beyond the width of the label
         larger_font: min(sp(10), self.font_size + 1)  # one point larger but not over maximum
         on_texture_size:
             if self.texture_size[0] > self.width: self.font_size -= 1  # reduce font size if too wide
@@ -62,7 +65,7 @@
             size_hint: 1, 0.15
             text: "Copy all words in wordbank to your clipboard"
             on_release:
-                root.copy_wordbank()
+                root.copy_wordbank_box()
         Button:
             size_hint: 1, 0.15
             text: 'Go to home screen'
@@ -70,14 +73,74 @@
                 root.manager.current = 'Home Page'
 
 <SSLScreen>:
+    nextword: nextword
     BoxLayout:
+        id: SSLBoxLayout
         orientation: "vertical"
         Label:
-            text: "placeholder"
+            id: nextword
+            text: ""
+        Button:
+            size_hint: 1, 0.15
+            text: 'Reveal word definition'
+            on_release:
+                root.manager.transition = SlideTransition(direction='left')
+                root.manager.current = 'SSL Screen Meaning'
         Button:
             size_hint: 1, 0.15
             text: 'Go to home screen'
             on_release:
+                root.manager.transition = NoTransition()
+                root.manager.current = 'Home Page'
+
+<SSLScreenMeaning>:
+    BoxLayout:
+        orientation: "vertical"
+        ScrollView:
+            Label:
+                text: root.word_def
+                size: self.texture_size
+                size_hint: 1, None
+                padding: "10dp", "10dp"
+                text_size: self.width, None
+
+        BoxLayout: 
+            orientation: "horizontal"
+            size_hint: 1, 0.15
+            Button:
+                text: 'Easy'
+                on_release:
+                    root.updateCurrentWord(0.15)
+                    app.root.sslscreen.fetchNextWord()
+                    root.manager.transition = SlideTransition(direction='left')
+                    root.manager.current = 'SSL Screen'
+            Button:
+                text: 'Good'
+                on_release:
+                    root.updateCurrentWord(0)
+                    app.root.sslscreen.fetchNextWord()
+                    root.manager.transition = SlideTransition(direction='left')
+                    root.manager.current = 'SSL Screen'
+            Button:
+                text: 'Hard'
+                on_release:
+                    root.updateCurrentWord(-0.15)
+                    app.root.sslscreen.fetchNextWord()
+                    root.manager.transition = SlideTransition(direction='left')
+                    root.manager.current = 'SSL Screen'
+            Button:
+                text: 'Again'
+                on_release:
+                    root.updateCurrentWord(-0.2)
+                    app.root.sslscreen.fetchNextWord()
+                    root.manager.transition = SlideTransition(direction='left')
+                    root.manager.current = 'SSL Screen'
+            
+        Button:
+            size_hint: 1, 0.15
+            text: 'Go to home screen'
+            on_release:
+                root.manager.transition = NoTransition()
                 root.manager.current = 'Home Page'
 
 <EnterWord>:
@@ -128,27 +191,21 @@
 
 <WordBox>:
     title: root.word
+    title_size: sp(10)
+
     size_hint: None, None
-    size: 400, 400
+    size: "220dp", "220dp"
 
     BoxLayout:
         orientation: 'vertical'
         ScrollView:
             id: scroll_view
-            #TextInput:
-                #text: root.definition
-                #size_hint: 1, None
-                #height: max(self.minimum_height, scroll_view.height)
             Label:
                 text: root.definition
-                #size_hint: 1, None
-                #size_hint_x: None
-                #size_hint_y: None
-                #on_texture_size: if self.texture: self.width = self.texture.width
-                #on_texture_size: if self.texture: self.height = self.texture.height
-                text_size: self.size
-                halign: 'left'
-                valign: 'top'
+                size: self.texture_size
+                size_hint: 1, None
+                padding: 10, 10
+                text_size: self.width, None
 
         Button:
             size_hint: 1, 0.2
@@ -157,14 +214,19 @@
 
 <RemoveWordBox>:
     title: root.word
+    title_size: sp(10)
+
     size_hint: None, None
-    size: 400, 400
+    size: "220dp", "220dp"
 
     BoxLayout:
         orientation: 'vertical'
         Label:
             text: "Are you sure you want to remove this word?"
-            text_size: self.size
+            text_size: "15sp"
+            size: self.texture_size
+            padding: 10, 10
+            text_size: self.width, None
         Button:
             size_hint: 1, 0.2
             text: 'Yes'
@@ -176,6 +238,19 @@
             text: 'No'
             on_release: root.dismiss()
 
+<CopyWordbankBox>:
+    title: "Copy wordbank"
+    size_hint: None, None
+    size: "220dp", "220dp"
+
+    BoxLayout:
+        orientation: 'vertical'
+        TextInput:
+            text: root.words
+        Button:
+            size_hint: 1, 0.2
+            text: 'Done'
+            on_release: root.dismiss()
 
 
 <Manager>:
@@ -204,5 +279,10 @@
     SSLScreen:
         id: sslscreen
         name: "SSL Screen"
+        manager: screen_manager
+
+    SSLScreenMeaning:
+        id: sslscreenmeaing
+        name: "SSL Screen Meaning"
         manager: screen_manager
 
