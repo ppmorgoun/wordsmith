@@ -1,3 +1,8 @@
+import os
+import random
+from datetime import datetime
+import sqlite3
+
 import kivy
 from kivy.app import App
 from kivy.uix.boxlayout import BoxLayout
@@ -9,67 +14,76 @@ from kivy.uix.recycleview import RecycleView
 from kivy.uix.screenmanager import ScreenManager, Screen, NoTransition, SlideTransition
 from kivy.properties import ObjectProperty, StringProperty, ListProperty
 from kivy.clock import Clock
+
 from PyDictionary import PyDictionary
-import sqlite3
-import os
-import random
-from datetime import datetime
-from speech import Free_Google_ASR
 import speech_recognition as sr
+
+from speech import Free_Google_ASR
+from db_functions import create_table, add_word, fetch_next_word, fetch_all_words, fetch_all_words_with_defs, update_word, delete_word
 
 kivy.require('2.0.0')
 
 class WordBox(Popup):
+    """ The popup for a word in the wordbank that displays it's definition"""
     word = StringProperty()
     definition = StringProperty()
 
 class CopyWordbankBox(Popup):
+    """ The popup for copying the wordbank to the clipboard"""
     words = StringProperty()
 
 class RemoveWordBox(Popup):
+    """ The popup for removing a word from the wordbank"""
     word = StringProperty()
 
 class DidntUnderstand(Popup):
+    """ The popup for when the user says something that the app doesn't understand"""
     pass
 
 class RecycleViewRow(BoxLayout):
+    """ The row for the recycle view in the homepage screen"""
     text = StringProperty()  
 
 class SSLScreen(Screen):
+    """ The first screen for the spaced repetition learning system,
+    which displays the word to be defined.
+    
+    Attributes:
+        current_word (str): The current word to be defined
+        current_word_row (tuple): The row of the current word in the database"""
     def __init__(self, **kwargs):
         super().__init__()
 
     current_word = StringProperty()
     current_word_row = ObjectProperty()
-
+ 
     def fetchNextWord(self):
         # Get the next word from the database
         # will prioritse words with the lowest CI (current interval) and the oldest datetime
         # #word VARCHAR(50), definition VARCHAR(400), EF INT, CI INT, isGraduate BOOLEAN, time TEXT
-        conn = sqlite3.connect('wordbank.db')
-        c = conn.cursor()
         try:
-            c.execute("SELECT * FROM words WHERE CI = (SELECT MIN(CI) FROM words)  AND time = (SELECT MIN(time) FROM (SELECT * FROM words WHERE CI = (SELECT MIN(CI) FROM words)))")
-            word_row= c.fetchall() # this is a list of tuples
+            word_row= fetch_next_word()
+            print(word_row)
             self.current_word = word_row[0][0]
             self.current_word_row = word_row[0]
-            print("Fetched word: {}".format(self.current_word_row))
-        except:
+            print(f"Fetched word: {self.current_word_row}")
+        except Exception as e:
             self.current_word = "No words"
             self.current_word_row = None
-            print("No words in database")
-        conn.close()
+            print("No words in database: exception: ", repr(e))
+
         self.ids.nextword.text = self.current_word
 
 
 class SSLScreenMeaning(Screen):
+    """ The second screen for the spaced repetition learning system, which shows 
+    the definition of the word and allows the user to select the difficulty of the word."""
     word_def = StringProperty("")
     
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
     def on_pre_enter(self, *args):
-        # get the definition of the current word
         app = App.get_running_app()
         try:
             current_word_row = app.root.sslscreen.current_word_row
@@ -77,8 +91,9 @@ class SSLScreenMeaning(Screen):
             current_word_row = None
 
         if current_word_row:
+            #word VARCHAR(50), definition VARCHAR(400), EF INT, CI INT, isGraduate BOOLEAN, time TEXT
             self.word = current_word_row[0]
-            self.word_def = current_word_row[1] #word VARCHAR(50), definition VARCHAR(400), EF INT, CI INT, isGraduate BOOLEAN, time TEXT
+            self.word_def = current_word_row[1] 
             self.ef = current_word_row[2]
             self.ci = current_word_row[3]
             self.isGraduate = current_word_row[4]
@@ -96,25 +111,37 @@ class SSLScreenMeaning(Screen):
         #if self.isGraduate:
         if self.word != "No words":
             self.ef += EFchange
+            self.time = int(datetime.now().strftime("%Y%m%d%H%M%S"))
+
             if EFchange == -0.2:
                 self.ci = 1
             else:
                 self.ci = self.ci * self.ef
                 
             if self.ef < 1.3:
+                """less than 1.3 creates a frusttrating experience for the user where it takes
+                forever to get the word to a higher EF"""
                 self.ef = 1.3
 
-            self.time = int(datetime.now().strftime("%Y%m%d%H%M%S"))
-            conn = sqlite3.connect('wordbank.db')
-            c = conn.cursor()
-            c.execute("UPDATE words SET EF = ?, CI = ?, time = ? WHERE word = ?", (self.ef, self.ci, self.time, self.word))
-            conn.commit()
-            conn.close()
-            print("Updated word: ", self.word, "EF: ", self.ef, "CI: ", self.ci, "time: ", self.time)
+            try:
+                update_word(word=self.word, definition=self.word_def, EF=self.ef, CI=self.ci, isGraduate=self.isGraduate, time=self.time)
+                print("Updated word: ", self.word, "EF: ", self.ef, "CI: ", self.ci, "time: ", self.time)
+            except Exception as e:
+                print("Error updating word: ", repr(e))
+            
         else:
             print("No words to update")
 
 class EnterWord(Screen):
+    """ The screen for entering a new word into the database
+        Includes voice recognition and a dictionary search
+
+    Attributes:
+        new_word (str): The word entered by the user
+        word_meaning (str): The definition of the word entered by the user
+        recognizer (Free_Google_ASR): The voice recognition object
+        dictionary (PyDictionary): The dictionary object
+    """
     def __init__(self, **kwargs):
         super().__init__()
 
@@ -188,30 +215,24 @@ class EnterWord(Screen):
             conn = sqlite3.connect('wordbank.db')
             c = conn.cursor()
             try:
-                sql_command = "INSERT INTO words (word, definition, EF, CI, isGraduate, time) VALUES (?, ?, ?, ?, ?, ?)"
-                values = (word_stripped, self.word_meaning, 2.5, 1, False, int(datetime.now().strftime("%Y%m%d%H%M%S")))
-                c.execute(sql_command, values)
-                conn.commit()
-                print("Word added to database")
-            except:
-                print('Error: word already exists in database')
-            conn.close()
+                add_word(word=word_stripped, definition=self.word_meaning)
+                print(f"Word \"{word_stripped}\" added to database")
+            except Exception as e:
+                print('Error: ', repr(e))
 
         self.word_meaning = ''
         self.new_word.text = ''
 
 
 class SettingsScreen(Screen):
+    """ The screen for changing the settings of the app
+    Currently only allows the user to copy the wordbank to your clipboard"""
     def __init__(self, **kwargs):
         super().__init__()
 
     def copy_wordbank(self):
         # copies the wordbank database to the user's clipboard
-        conn = sqlite3.connect('wordbank.db')
-        c = conn.cursor()
-        c.execute("SELECT word FROM words")
-        words= c.fetchall() # this is a list of tuples
-        conn.close()
+        word = fetch_all_words()
         words = [i[0] for i in words]
         words = '\n'.join(words)
         print(words)
@@ -227,6 +248,7 @@ class SettingsScreen(Screen):
 
 
 class HomePageScreen(Screen):
+    """ The screen for the homepage of the app """
     def word_box(self, word, definition):
         # this is a popup that shows the word and definition
         p = WordBox()
@@ -244,43 +266,34 @@ class HomePageScreen(Screen):
 
 
 class HomePage(RecycleView):
+    """ The recycleview portion of the homepage that shows all the words in the database"""
 
     def __init__(self, **kwargs):
         super(HomePage, self).__init__(**kwargs)
-        conn = sqlite3.connect('wordbank.db')
-        c = conn.cursor()
-        c.execute("SELECT word, definition FROM words")
-        word_row = c.fetchall()
-        conn.close()
 
-        self.data= [{'text': str(word), 'id': str(definition)} for word, definition in word_row]  
+        words_with_defs = fetch_all_words_with_defs()
+        self.data= [{'text': str(word), 'id': str(definition)} for word, definition in words_with_defs]  
 
     def update_word(self):
         # a popup called from the recycleviewrow that updates the database with a word, definition, and bucket
-        conn = sqlite3.connect('wordbank.db')
-        c = conn.cursor()
-        c.execute("SELECT word, definition FROM words")
-        word_row = c.fetchall() # this is a list of tuples
-        conn.close()
-        
-        self.data= [{'text': str(word), 'id': str(definition)} for word, definition in word_row]   
+
+        words_with_defs = fetch_all_words_with_defs()
+        self.data= [{'text': str(word), 'id': str(definition)} for word, definition in words_with_defs] 
+
         print("Updated home page with wordbank")
 
     def remove_word(self, word):
         # a popup called by the recycleviewrow that removes a word from the database
-        conn = sqlite3.connect('wordbank.db')
-        c = conn.cursor()
-        sql_command = "DELETE FROM words WHERE word = ?"
-        c.execute(sql_command, (word,))
-        conn.commit()
-        c.execute("SELECT word, definition FROM words")
-        word_row = c.fetchall()
-        conn.close()
+        delete_word(word)
+        print(f"Removed word: \"{word}\" from database")
 
-        self.data= [{'text': str(word), 'id': str(definition)} for word, definition in word_row] 
+        words_with_defs = fetch_all_words_with_defs()
+        self.data= [{'text': str(word), 'id': str(definition)} for word, definition in words_with_defs] 
     
 
 class Manager(ScreenManager):
+    """ The screen manager for the app
+    This is where all the screens are defined """
     def __init__(self, **kwargs):
         super().__init__()
 
@@ -292,28 +305,15 @@ class Manager(ScreenManager):
 
 
 class WordSmith(App):
+    """ The main app class """
     def on_start(self) -> None:
         print(type(App.get_running_app()))
         print(type(App.get_running_app().root))
         print(type(App.get_running_app().root.get_screen('SSL Screen')))
 
     def build(self):
-        path = './wordbank.db'
-        if not os.path.exists(path): 
-            # create our database if it doesn't exist
-            # create a table for words
-            conn = sqlite3.connect('wordbank.db')
-            c = conn.cursor()
-            c.execute("""CREATE TABLE if not exists words(
-			word VARCHAR(50), definition VARCHAR(400), EF INT, CI INT, isGraduate BOOLEAN, time TEXT, UNIQUE(word))
-		 """)
-            conn.commit()
-
-            # insert "wordsmith" and it's definition into words table
-            c.execute("""INSERT INTO words (word, definition, EF, CI, isGraduate, time) VALUES ('Wordsmith', 'A skilled user of words', 2.5, 1, True, '{}')""".format(int(datetime.now().strftime("%Y%m%d%H%M%S"))))
-            conn.commit()
-            conn.close()
-        
+        create_table()
+    
         sm = Manager(transition=NoTransition())
         return sm
 
