@@ -26,8 +26,14 @@ def create_connection():
     return conn, c
 
 # fetch word and definition from database
-def fetch_word():
-    pass
+def fetch_word(word):
+    """Returns a list of tuples containing the word and all it's attributes"""
+
+    conn, c = create_connection()
+    c.execute("SELECT * FROM words WHERE word = ?", (word,))
+    word_row = c.fetchall()
+    conn.close()
+    return word_row[0]
 
 # Delete a word from the database
 def delete_word(word):
