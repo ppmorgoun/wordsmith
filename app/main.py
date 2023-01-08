@@ -12,14 +12,14 @@ from kivy.uix.button import Button
 from kivy.uix.label import Label
 from kivy.uix.recycleview import RecycleView
 from kivy.uix.screenmanager import ScreenManager, Screen, NoTransition, SlideTransition
-from kivy.properties import ObjectProperty, StringProperty, ListProperty
+from kivy.properties import ObjectProperty, StringProperty, ListProperty, NumericProperty
 from kivy.clock import Clock
 
 from PyDictionary import PyDictionary
 import speech_recognition as sr
 
 from speech import Free_Google_ASR
-from db_functions import create_table, add_word, fetch_next_word, fetch_all_words, fetch_all_words_with_defs, update_word, delete_word
+from db_functions import create_table, add_word, fetch_word, fetch_next_word, fetch_all_words, fetch_all_words_with_defs, update_word, delete_word
 
 kivy.require('2.0.0')
 
@@ -43,6 +43,76 @@ class DidntUnderstand(Popup):
 class RecycleViewRow(BoxLayout):
     """ The row for the recycle view in the homepage screen"""
     text = StringProperty()  
+
+class WordMeaningScreen(Screen):
+    """ The screen for the word meaning screen"""
+    word = StringProperty()
+    definition = StringProperty()
+    ef = NumericProperty()
+    ci = NumericProperty()
+    isGraduate = NumericProperty()
+    time = NumericProperty()
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+    def change_word(self, word):
+        self.word = word
+        word_row = fetch_word(word)
+        print(repr(word_row))
+        self.definition = word_row[1] 
+        self.ef = word_row[2]
+        self.ci = word_row[3]
+        self.isGraduate = word_row[4]
+        self.time = word_row[5]
+
+    def update_word(self, **kwargs):
+            # was updateCurrentWord
+            # update the current word in the database
+
+            word_params = {'word', 'definition', 'EF', 'CI', 'isGraduate', 'time'}
+            changed_CI = False
+
+            for key, value in kwargs.items():
+                if key == 'EF':
+                    # implementing EF change logic
+                    self.ef += value
+                    if key == -0.2:
+                        self.ci = 1
+                        changed_CI = True
+                    else:
+                        self.ci = self.ci * self.ef
+                    if self.ef < 1.3:
+                        """less than 1.3 creates a frusttrating experience for the user where it takes
+                        forever to get the word to a higher EF"""
+                        self.ef = 1.3
+                elif key == 'CI':
+                    # logic to prevent CI from being updated in the case it has been reset to 1 due to 
+                    # a user selecting "Again"
+                    if changed_CI == True:
+                        continue
+                    else:
+                        self.ci = value
+                elif key in word_params:
+                    setattr(self, key, value)
+                else:
+                    raise TypeError(f"Invalid argument: {key}")
+
+            self.time = int(datetime.now().strftime("%Y%m%d%H%M%S"))    
+
+            try:
+                update_word(word=self.word, definition=self.definition, EF=self.ef, CI=self.ci, isGraduate=self.isGraduate, time=self.time)
+                print("Updated word: ", self.word, "EF: ", self.ef, "CI: ", self.ci, "time: ", self.time)
+            except Exception as e:
+                print("Error updating word: ", repr(e))
+
+class EditWordMeaningScreen(Screen):
+    word = StringProperty()
+    word_def = StringProperty()
+
+    def current_word(self, word, word_def):
+        self.word = word
+        self.word_def = word_def
 
 class SSLScreen(Screen):
     """ The first screen for the spaced repetition learning system,
@@ -106,32 +176,7 @@ class SSLScreenMeaning(Screen):
             self.isGraduate = 0
             self.time = 0
 
-    def updateCurrentWord(self, EFchange):
-        # update the current word in the database
-        #if self.isGraduate:
-        if self.word != "No words":
-            self.ef += EFchange
-            self.time = int(datetime.now().strftime("%Y%m%d%H%M%S"))
-
-            if EFchange == -0.2:
-                self.ci = 1
-            else:
-                self.ci = self.ci * self.ef
-                
-            if self.ef < 1.3:
-                """less than 1.3 creates a frusttrating experience for the user where it takes
-                forever to get the word to a higher EF"""
-                self.ef = 1.3
-
-            try:
-                update_word(word=self.word, definition=self.word_def, EF=self.ef, CI=self.ci, isGraduate=self.isGraduate, time=self.time)
-                print("Updated word: ", self.word, "EF: ", self.ef, "CI: ", self.ci, "time: ", self.time)
-            except Exception as e:
-                print("Error updating word: ", repr(e))
-            
-        else:
-            print("No words to update")
-
+    
 class EnterWord(Screen):
     """ The screen for entering a new word into the database
         Includes voice recognition and a dictionary search
@@ -249,6 +294,9 @@ class SettingsScreen(Screen):
 
 class HomePageScreen(Screen):
     """ The screen for the homepage of the app """
+    def __init__(self, **kwargs):
+        super().__init__()
+
     def word_box(self, word, definition):
         # this is a popup that shows the word and definition
         p = WordBox()
@@ -263,7 +311,7 @@ class HomePageScreen(Screen):
         p.word = word
         p.open()
         print("{} was removed".format(word))
-
+    
 
 class HomePage(RecycleView):
     """ The recycleview portion of the homepage that shows all the words in the database"""
@@ -274,7 +322,7 @@ class HomePage(RecycleView):
         words_with_defs = fetch_all_words_with_defs()
         self.data= [{'text': str(word), 'id': str(definition)} for word, definition in words_with_defs]  
 
-    def update_word(self):
+    def update_wordbank(self):
         # a popup called from the recycleviewrow that updates the database with a word, definition, and bucket
 
         words_with_defs = fetch_all_words_with_defs()
@@ -302,6 +350,7 @@ class Manager(ScreenManager):
     settingsscreen = ObjectProperty(None)
     sslscreen = ObjectProperty(None) # spaced repitition learning screen
     sslscreenmeaning = ObjectProperty(None) # word definition spaced repitition learning screen
+    wordmeaningscreen = ObjectProperty(None) # word definition screen
 
 
 class WordSmith(App):
