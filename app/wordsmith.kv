@@ -245,29 +245,6 @@
                 app.root.wordmeaningscreen.change_word(root.word)
                 app.root.current = 'Word Meaning Screen'
 
-<WordBox>:
-    title: root.word
-    title_size: sp(10)
-
-    size_hint: None, None
-    size: "220dp", "220dp"
-
-    BoxLayout:
-        orientation: 'vertical'
-        ScrollView:
-            id: scroll_view
-            Label:
-                text: root.definition
-                size: self.texture_size
-                size_hint: 1, None
-                padding: 10, 10
-                text_size: self.width, None
-
-        Button:
-            size_hint: 1, 0.2
-            text: 'OK'
-            on_release: root.dismiss()
-
 <RemoveWordBox>:
     title: root.word
     title_size: sp(10)
@@ -288,11 +265,14 @@
             text: 'Yes'
             on_release: 
                 app.root.homepagescreen.ids.main_boxlayout.children[2].remove_word(root.word)
+                app.root.current = "Home Page"
                 root.dismiss()
         Button:
             size_hint: 1, 0.2
             text: 'No'
-            on_release: root.dismiss()
+            on_release: 
+                root.dismiss()
+
 
 <CopyWordbankBox>:
     title: "Copy wordbank"

@@ -23,11 +23,6 @@ from db_functions import create_table, add_word, fetch_word, fetch_next_word, fe
 
 kivy.require('2.0.0')
 
-class WordBox(Popup):
-    """ The popup for a word in the wordbank that displays it's definition"""
-    word = StringProperty()
-    definition = StringProperty()
-
 class CopyWordbankBox(Popup):
     """ The popup for copying the wordbank to the clipboard"""
     words = StringProperty()
@@ -52,9 +47,6 @@ class WordMeaningScreen(Screen):
     ci = NumericProperty()
     isGraduate = NumericProperty()
     time = NumericProperty()
-
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
 
     def change_word(self, word):
         self.word = word
@@ -294,17 +286,7 @@ class SettingsScreen(Screen):
 
 class HomePageScreen(Screen):
     """ The screen for the homepage of the app """
-    def __init__(self, **kwargs):
-        super().__init__()
-
-    def word_box(self, word, definition):
-        # this is a popup that shows the word and definition
-        p = WordBox()
-        p.word = word
-        p.definition = definition
-        p.open()
-        print("{}'s definition was shown".format(word))
-
+    
     def remove_word_box(self, word):
         # this is a popup that asks if you want to remove the word
         p = RemoveWordBox()
