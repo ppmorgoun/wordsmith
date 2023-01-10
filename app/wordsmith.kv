@@ -112,28 +112,32 @@
             Button:
                 text: 'Easy'
                 on_release:
-                    root.updateCurrentWord(EF=0.15)
+                    app.root.wordmeaningscreen.change_word(root.word)
+                    app.root.wordmeaningscreen.update_word(EF=0.15)
                     app.root.sslscreen.fetchNextWord()
                     root.manager.transition = SlideTransition(direction='left')
                     root.manager.current = 'SSL Screen'
             Button:
                 text: 'Good'
                 on_release:
-                    root.updateCurrentWord(EF=0)
+                    app.root.wordmeaningscreen.change_word(root.word)
+                    app.root.wordmeaningscreen.update_word(EF=0)
                     app.root.sslscreen.fetchNextWord()
                     root.manager.transition = SlideTransition(direction='left')
                     root.manager.current = 'SSL Screen'
             Button:
                 text: 'Hard'
                 on_release:
-                    root.updateCurrentWord(EF=-0.15)
+                    app.root.wordmeaningscreen.change_word(root.word)
+                    app.root.wordmeaningscreen.update_word(EF=-0.15)
                     app.root.sslscreen.fetchNextWord()
                     root.manager.transition = SlideTransition(direction='left')
                     root.manager.current = 'SSL Screen'
             Button:
                 text: 'Again'
                 on_release:
-                    root.updateCurrentWord(EF=-0.2)
+                    app.root.wordmeaningscreen.change_word(root.word)
+                    app.root.wordmeaningscreen.update_word(EF=-0.2)
                     app.root.sslscreen.fetchNextWord()
                     root.manager.transition = SlideTransition(direction='left')
                     root.manager.current = 'SSL Screen'
@@ -241,8 +245,8 @@
             size_hint: 1, 0.15
             text: 'Done'
             on_release:
-                app.root.wordmeaningscreen.update_word(definition=root.ids.new_def.text)
                 app.root.wordmeaningscreen.change_word(root.word)
+                app.root.wordmeaningscreen.update_word(definition=root.ids.new_def.text)
                 app.root.current = 'Word Meaning Screen'
 
 <RemoveWordBox>:

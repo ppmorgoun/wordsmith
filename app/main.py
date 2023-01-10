@@ -27,17 +27,21 @@ class CopyWordbankBox(Popup):
     """ The popup for copying the wordbank to the clipboard"""
     words = StringProperty()
 
+
 class RemoveWordBox(Popup):
     """ The popup for removing a word from the wordbank"""
     word = StringProperty()
+
 
 class DidntUnderstand(Popup):
     """ The popup for when the user says something that the app doesn't understand"""
     pass
 
+
 class RecycleViewRow(BoxLayout):
     """ The row for the recycle view in the homepage screen"""
     text = StringProperty()  
+
 
 class WordMeaningScreen(Screen):
     """ The screen for the word meaning screen"""
@@ -47,6 +51,7 @@ class WordMeaningScreen(Screen):
     ci = NumericProperty()
     isGraduate = NumericProperty()
     time = NumericProperty()
+    si = NumericProperty()
 
     def change_word(self, word):
         self.word = word
@@ -57,27 +62,61 @@ class WordMeaningScreen(Screen):
         self.ci = word_row[3]
         self.isGraduate = word_row[4]
         self.time = word_row[5]
+        self.si = word_row[6]
 
     def update_word(self, **kwargs):
             # was updateCurrentWord
             # update the current word in the database
 
-            word_params = {'word', 'definition', 'EF', 'CI', 'isGraduate', 'time'}
+            word_params = {'word', 'definition', 'EF', 'CI', 'isGraduate', 'time', 'SI'}
             changed_CI = False
 
             for key, value in kwargs.items():
+                print(f"Value type: {type(value)}")
                 if key == 'EF':
-                    # implementing EF change logic
-                    self.ef += value
-                    if key == -0.2:
-                        self.ci = 1
-                        changed_CI = True
-                    else:
-                        self.ci = self.ci * self.ef
-                    if self.ef < 1.3:
-                        """less than 1.3 creates a frusttrating experience for the user where it takes
-                        forever to get the word to a higher EF"""
-                        self.ef = 1.3
+                    # All the word changes done during Space Repitition Learning module
+                    if not self.si:
+                        # implementing EF change logic for graduate words
+                        self.ef += value
+                        if value == -0.2:
+                            self.ci = 1
+                            changed_CI = True
+                        else:
+                            self.ci = self.ci * self.ef
+                        if self.ef < 1.3:
+                            """less than 1.3 creates a frusttrating experience for the user where it takes
+                            forever to get the word to a higher EF"""
+                            self.ef = 1.3
+
+                    elif self.si != 3:
+                        # Implementing EF and SI change logic for non-graduate words
+                        if value == -0.2: # 'Again' is selected
+                            self.si = 1
+                            self.ci = 1
+                        elif value == -0.15: # 'Hard' is selected
+                            self.ci = self.ci * self.ef
+                        elif value == 0.15: # 'Easy' is selected
+                            self.ci = self.ci * self.ef
+                            self.si += 1
+                            self.ef += value
+                        else: # 'Good is selected'
+                            self.ci = self.ci * self.ef
+                            self.si += 1
+
+                    else: # When si=3 if the user marks "good" or "easy" the word graduates, and EF can now decrease
+                        # EF is reset at 2.5, CI remains the same
+                        if value == -0.2: # 'Again' is selected
+                            self.si = 1
+                            self.ci = 1
+                        elif value == -0.15: # 'Hard' is selected
+                            self.ci = self.ci * self.ef
+                            self.si = 1
+                        else: # 'Easy' or 'Good' is selected
+                            self.ci = self.ci * self.ef
+                            self.si = 0
+                            self.ef = 2.5
+                            self.isGraduate = 1
+
                 elif key == 'CI':
                     # logic to prevent CI from being updated in the case it has been reset to 1 due to 
                     # a user selecting "Again"
@@ -89,14 +128,17 @@ class WordMeaningScreen(Screen):
                     setattr(self, key, value)
                 else:
                     raise TypeError(f"Invalid argument: {key}")
+                    
+                
+                                    
 
             self.time = int(datetime.now().strftime("%Y%m%d%H%M%S"))    
 
             try:
-                update_word(word=self.word, definition=self.definition, EF=self.ef, CI=self.ci, isGraduate=self.isGraduate, time=self.time)
-                print("Updated word: ", self.word, "EF: ", self.ef, "CI: ", self.ci, "time: ", self.time)
+                update_word(word=self.word, definition=self.definition, EF=self.ef, CI=self.ci, isGraduate=self.isGraduate, time=self.time, SI=self.si)
             except Exception as e:
                 print("Error updating word: ", repr(e))
+
 
 class EditWordMeaningScreen(Screen):
     word = StringProperty()
@@ -105,6 +147,7 @@ class EditWordMeaningScreen(Screen):
     def current_word(self, word, word_def):
         self.word = word
         self.word_def = word_def
+
 
 class SSLScreen(Screen):
     """ The first screen for the spaced repetition learning system,
@@ -125,10 +168,8 @@ class SSLScreen(Screen):
         # #word VARCHAR(50), definition VARCHAR(400), EF INT, CI INT, isGraduate BOOLEAN, time TEXT
         try:
             word_row= fetch_next_word()
-            print(word_row)
-            self.current_word = word_row[0][0]
-            self.current_word_row = word_row[0]
-            print(f"Fetched word: {self.current_word_row}")
+            self.current_word = word_row[0]
+            self.current_word_row = word_row
         except Exception as e:
             self.current_word = "No words"
             self.current_word_row = None
@@ -140,6 +181,7 @@ class SSLScreen(Screen):
 class SSLScreenMeaning(Screen):
     """ The second screen for the spaced repetition learning system, which shows 
     the definition of the word and allows the user to select the difficulty of the word."""
+    word = StringProperty()
     word_def = StringProperty("")
     
     def __init__(self, **kwargs):
@@ -156,17 +198,9 @@ class SSLScreenMeaning(Screen):
             #word VARCHAR(50), definition VARCHAR(400), EF INT, CI INT, isGraduate BOOLEAN, time TEXT
             self.word = current_word_row[0]
             self.word_def = current_word_row[1] 
-            self.ef = current_word_row[2]
-            self.ci = current_word_row[3]
-            self.isGraduate = current_word_row[4]
-            self.time = current_word_row[5]
         else:
             self.word = "No words"
             self.word_def = "No words"
-            self.ef = 0
-            self.ci = 0
-            self.isGraduate = 0
-            self.time = 0
 
     
 class EnterWord(Screen):
@@ -249,11 +283,8 @@ class EnterWord(Screen):
         # writes a word, it's meaning, and the default bucket number to the database     
         if self.new_word.text != '':
             word_stripped = self.new_word.text.strip().capitalize()
-            conn = sqlite3.connect('wordbank.db')
-            c = conn.cursor()
             try:
                 add_word(word=word_stripped, definition=self.word_meaning)
-                print(f"Word \"{word_stripped}\" added to database")
             except Exception as e:
                 print('Error: ', repr(e))
 
@@ -286,7 +317,7 @@ class SettingsScreen(Screen):
 
 class HomePageScreen(Screen):
     """ The screen for the homepage of the app """
-    
+
     def remove_word_box(self, word):
         # this is a popup that asks if you want to remove the word
         p = RemoveWordBox()
@@ -347,6 +378,7 @@ class WordSmith(App):
     
         sm = Manager(transition=NoTransition())
         return sm
+
 
 WordApp = WordSmith()
 
